@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'createdAt']) &&
+        data.keys().size() <= 6 &&
+        data.email is string && data.email.size() <= 256 &&
+        data.createdAt == request.time;
+    }
+
+    function isValidVideoBlueprint(data) {
+      return data.keys().hasAll(['userId', 'title', 'createdAt', 'storyboard']) &&
+        data.keys().size() <= 15 &&
+        data.userId == request.auth.uid &&
+        data.title is string && data.title.size() <= 256 &&
+        data.createdAt == (resource == null ? request.time : resource.data.createdAt) &&
+        data.storyboard is list && data.storyboard.size() <= 50;
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && 
+                      isValidUser(incoming()) && 
+                      incoming().createdAt == existing().createdAt;
+    }
+
+    match /blueprints/{blueprintId} {
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                      isValidId(blueprintId) && 
+                      isValidVideoBlueprint(incoming());
+                      
+      allow update: if isSignedIn() && 
+                      existing().userId == request.auth.uid &&
+                      isValidVideoBlueprint(incoming()) &&
+                      incoming().userId == existing().userId &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['title', 'overallMood', 'colorPalette', 'suggestedAspectRatio', 'storyboard', 'vibe', 'lyrics']);
+                      
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

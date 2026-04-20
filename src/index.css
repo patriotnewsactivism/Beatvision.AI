@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #ff4e00;
+  --color-accent-pink: #ec4899;
+  --font-serif: "Playfair Display", "Georgia", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "Roboto Mono", monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0a0502] text-white min-h-screen font-sans antialiased;
+    background: 
+      radial-gradient(circle at 50% 30%, #3a1510 0%, transparent 60%),
+      radial-gradient(circle at 10% 80%, #ff4e00 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+.glass {
+  @apply bg-black/40 backdrop-blur-md border border-white/10;
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(255, 78, 0, 0.5), 0 0 20px rgba(255, 78, 0, 0.3);
+}
+
+.neon-glow {
+  box-shadow: 0 0 20px rgba(255, 78, 0, 0.3);
+}
+
+.meta-label {
+  @apply text-[10px] uppercase tracking-[0.2em] text-white/40 font-medium;
+}
+
+.mono-value {
+  @apply font-mono tracking-tighter;
+}
+
+@keyframes pulse-neon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.pulse-neon {
+  animation: pulse-neon 2s infinite ease-in-out;
+}
+
+/* Custom scrollbar for immersive feel */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand);
+}

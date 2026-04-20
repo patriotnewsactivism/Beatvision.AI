@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Information about the application user",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "VideoBlueprint": {
+      "title": "VideoBlueprint",
+      "description": "A generated music video blueprint",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user who owns this blueprint" },
+        "title": { "type": "string" },
+        "overallMood": { "type": "string" },
+        "colorPalette": { "type": "array", "items": { "type": "string" } },
+        "suggestedAspectRatio": { "type": "string" },
+        "vibe": { "type": "string", "description": "Input vibe" },
+        "lyrics": { "type": "string", "description": "Input lyrics" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "storyboard": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string" },
+              "description": { "type": "string" },
+              "visualStyle": { "type": "string" },
+              "cameraMovement": { "type": "string" },
+              "lighting": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["userId", "title", "createdAt", "storyboard"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/blueprints/{blueprintId}": {
+      "schema": "VideoBlueprint",
+      "description": "Stored music video blueprints"
+    }
+  }
+}
