@@ -19,6 +19,7 @@ import { HeaderControls } from "./components/HeaderControls";
 import { useAuth } from "./hooks/useAuth";
 import { useBlueprints } from "./hooks/useBlueprints";
 import { usePlaybackSync } from "./hooks/usePlaybackSync";
+import { getStylePackById } from "./utils/sceneUtils";
 
 type ViewStep = "input" | "loading" | "result" | "history";
 type ViewMode = "storyboard" | "tech";
@@ -59,6 +60,7 @@ export default function App() {
     currentTime,
   });
 
+  const selectedStylePackId = "neon-performance";
   const selectedStylePack = getStylePackById(selectedStylePackId);
 
   useEffect(() => {
@@ -235,11 +237,11 @@ ${blueprint.storyboard
   .map(
     (scene) => `
 ### [${scene.timestamp}] ${scene.shotType}
-*   **Action**: ${scene.description}
-*   **Style**: ${scene.visualStyle}
-*   **Optics**: ${scene.lensSuggestion} on ${scene.cameraRig}
-*   **Motion**: ${scene.cameraMovement}
-*   **Light**: ${scene.lighting} (${scene.lightingEquipment})
+* **Action**: ${scene.description}
+* **Style**: ${scene.visualStyle}
+* **Optics**: ${scene.lensSuggestion} on ${scene.cameraRig}
+* **Motion**: ${scene.cameraMovement}
+* **Light**: ${scene.lighting} (${scene.lightingEquipment})
 `,
   )
   .join("\n")}
@@ -427,17 +429,6 @@ ${Array.from(new Set(blueprint.storyboard.map((scene) => scene.lightingEquipment
                     </span>
                   </div>
                 </div>
-              )}
-
-              <div className="flex gap-3 mt-8 flex-wrap">
-                {user ? (
-                  <button onClick={saveBlueprint} disabled={isSaving || !!blueprint.id} className={`px-6 py-3 rounded-full font-bold flex items-center gap-2 uppercase tracking-widest text-[10px] ${blueprint.id ? "bg-green-500/20 text-green-500" : "bg-white/10 text-white hover:bg-white/20"}`}>
-                    {isSaving ? "Saving..." : blueprint.id ? <><CheckCircle2 className="w-3 h-3" /> Saved</> : <><Save className="w-3 h-3" /> Save</>}
-                  </button>
-                ) : <button onClick={login} className="px-6 py-3 rounded-full bg-white/10 text-white/60 font-bold">Sign in to Save</button>}
-                <button onClick={downloadBlueprint} className="px-6 py-3 rounded-full bg-brand font-bold text-white flex items-center gap-2"><Download className="w-4 h-4" /> Export</button>
-                {blueprint.id && <button onClick={copyShareLink} className="px-6 py-3 rounded-full bg-white/10 text-white font-bold flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Share</button>}
-                <button onClick={() => { setIsQuickCreateMode(false); setStep("input"); }} className="px-6 py-3 rounded-full bg-white/10 text-white font-bold">Advanced Edits</button>
               </div>
             </div>
 
@@ -519,4 +510,4 @@ ${Array.from(new Set(blueprint.storyboard.map((scene) => scene.lightingEquipment
       <div className="fixed inset-0 pointer-events-none opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:40px_40px]" />
     </div>
   );
-}
+                }
