@@ -192,10 +192,11 @@ export default function App() {
       }
 
       const result = await generateMusicVideoBlueprint(
-        vibe, 
-        lyrics, 
+        vibe,
+        lyrics,
         audioRef.current?.duration || 180,
-        audioData
+        audioData,
+        user?.uid,
       );
       setBlueprint(result);
       setStep("result");
@@ -204,15 +205,15 @@ export default function App() {
       setIsGeneratingSeeds(true);
       try {
         const structuralSeeds = await Promise.all([
-          generateVisualSeed(`${vibe} ${result.title} visual 1`),
-          generateVisualSeed(`${vibe} abstract lighting reference`)
+          generateVisualSeed(`${vibe} ${result.title} visual 1`, user?.uid),
+          generateVisualSeed(`${vibe} abstract lighting reference`, user?.uid)
         ]);
         setVisualSeeds(structuralSeeds);
 
         // Generate seeds for first 6 scenes
         const sceneSeeds = await Promise.all(
           result.storyboard.slice(0, 6).map(s => 
-            generateVisualSeed(`${vibe} scene: ${s.description.slice(0, 50)} style: ${s.visualStyle}`)
+            generateVisualSeed(`${vibe} scene: ${s.description.slice(0, 50)} style: ${s.visualStyle}`, user?.uid)
           )
         );
         

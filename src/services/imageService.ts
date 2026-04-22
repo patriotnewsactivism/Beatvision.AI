@@ -1,32 +1,18 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
-export async function generateVisualSeed(prompt: string): Promise<string> {
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        {
-          text: `Generate a high-quality cinematic moodboard image for a music video. 
-          Vibe: ${prompt}. 
-          Style: Cinematic, professional, atmospheric, focus on lighting and texture. 
-          Exclude: Text, watermarks.`,
-        },
-      ],
+export async function generateVisualSeed(prompt: string, userId?: string): Promise<string> {
+  const response = await fetch('/api/generate-seed', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(userId ? { 'x-user-id': userId } : {}),
     },
-    config: {
-      imageConfig: {
-        aspectRatio: "16:9"
-      }
-    }
+    body: JSON.stringify({ prompt, userId }),
   });
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
+  const data = (await response.json()) as { imageDataUrl?: string; error?: string };
+
+  if (!response.ok || !data.imageDataUrl) {
+    throw new Error(data.error || 'Failed to generate visual seed');
   }
 
-  throw new Error("Failed to generate visual seed");
+  return data.imageDataUrl;
 }
