@@ -510,4 +510,4 @@ ${Array.from(new Set(blueprint.storyboard.map((scene) => scene.lightingEquipment
       <div className="fixed inset-0 pointer-events-none opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:40px_40px]" />
     </div>
   );
-                }
+  }
