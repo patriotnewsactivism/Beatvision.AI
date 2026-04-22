@@ -28,7 +28,7 @@ const storyboardSceneSchema = {
 
 export async function generateMusicVideoBlueprint(
   vibe: string,
-  lyrics: string = "",
+  lyrics: string = '',
   durationSeconds: number = 180,
   audioData?: { data: string; mimeType: string },
   profiles?: GenerationProfiles
@@ -95,12 +95,12 @@ export async function generateMusicVideoBlueprint(
     }
   });
 
-  try {
-    return JSON.parse(response.text || "{}") as VideoBlueprint;
-  } catch (e) {
-    console.error("Failed to parse blueprint", e);
-    throw new Error("Failed to generate music video blueprint");
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || "Failed to generate music video blueprint");
   }
+
+  return response.json() as Promise<VideoBlueprint>;
 }
 
 export async function regenerateScene(

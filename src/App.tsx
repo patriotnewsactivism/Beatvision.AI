@@ -32,7 +32,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { generateMusicVideoBlueprint, regenerateScene } from "./services/geminiService";
 import { generateVisualSeed } from "./services/imageService";
-import { VideoBlueprint, Scene } from "./types";
+import { VideoBlueprint, Scene, RenderJob } from "./types";
 import { auth, db } from "./firebase";
 import {
   signInWithPopup,
@@ -120,11 +120,16 @@ export default function App() {
   });
 
   const loadSharedBlueprint = async (id: string) => {
+    if (!id || id.includes("/")) {
+      setStep("input");
+      return;
+    }
     setStep("loading");
     try {
-      const docSnap = await getDocs(query(collection(db, "blueprints"), where("__name__", "==", id)));
-      if (!docSnap.empty) {
-        const data = { id: docSnap.docs[0].id, ...docSnap.docs[0].data() } as VideoBlueprint;
+      const docRef = doc(db, "blueprints", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = { id: docSnap.id, ...docSnap.data() } as VideoBlueprint;
         setBlueprint(data);
         setVibe(data.vibe || "");
         setLyrics(data.lyrics || "");
@@ -163,8 +168,8 @@ export default function App() {
     }
   };
 
-  const saveBlueprint = async () => {
-    if (!user || !blueprint) return;
+  const saveBlueprint = async (): Promise<string | null> => {
+    if (!user || !blueprint) return null;
     setIsSaving(true);
     try {
       const docRef = await addDoc(collection(db, "blueprints"), {
@@ -180,8 +185,10 @@ export default function App() {
       });
       setBlueprint({ ...blueprint, id: docRef.id });
       loadMyBlueprints(user.uid);
+      return docRef.id;
     } catch (err) {
       console.error("Save failed", err);
+      return null;
     } finally {
       setIsSaving(false);
     }
