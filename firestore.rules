@@ -72,5 +72,19 @@ service cloud.firestore {
                       
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
+
+    match /renders/{renderId} {
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                      incoming().keys().hasAll(['userId', 'blueprintId', 'status', 'stage', 'progress', 'createdAt']) &&
+                      incoming().userId == request.auth.uid &&
+                      incoming().blueprintId is string &&
+                      incoming().status in ['queued', 'processing', 'failed', 'complete'] &&
+                      incoming().stage in ['scene-plan', 'asset-generation', 'timeline-assembly', 'final-encode'] &&
+                      incoming().progress is number &&
+                      incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
   }
 }
