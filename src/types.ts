@@ -1,3 +1,13 @@
+export interface StylePack {
+  id: string;
+  name: string;
+  description: string;
+  defaultVibe: string;
+  defaultCameraProfile: string;
+  defaultLightingProfile: string;
+  defaultGradeProfile: string;
+}
+
 export interface Scene {
   timestamp: string;
   description: string;
@@ -9,6 +19,7 @@ export interface Scene {
   shotType: string;
   lightingEquipment: string;
   thumbnailUrl?: string;
+  locked?: boolean;
 }
 
 export interface VideoBlueprint {
@@ -21,5 +32,9 @@ export interface VideoBlueprint {
   storyboard: Scene[];
   vibe?: string;
   lyrics?: string;
+  stylePackId?: string;
+  cameraProfile?: string;
+  lightingProfile?: string;
+  gradeProfile?: string;
   createdAt?: string;
 }
