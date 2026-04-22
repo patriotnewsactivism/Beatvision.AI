@@ -59,6 +59,8 @@ export default function App() {
     currentTime,
   });
 
+  const selectedStylePack = getStylePackById(selectedStylePackId);
+
   useEffect(() => {
     if (!user) {
       return;
@@ -96,8 +98,38 @@ export default function App() {
       });
   }, [loadSharedBlueprint]);
 
+  const generateSeeds = async (result: VideoBlueprint, vibeValue: string) => {
+    setIsGeneratingSeeds(true);
+    try {
+      const structuralSeeds = await Promise.all([
+        generateVisualSeed(`${vibeValue} ${result.title} key visual`),
+        generateVisualSeed(`${vibeValue} lighting concept ${selectedStylePack.name}`)
+      ]);
+      setVisualSeeds(structuralSeeds);
+
+      const sceneSeeds = await Promise.all(
+        result.storyboard.slice(0, 6).map((s) =>
+          generateVisualSeed(`${vibeValue} scene: ${s.description.slice(0, 50)} style: ${s.visualStyle}`)
+        )
+      );
+
+      const updatedStoryboard = result.storyboard.map((s, i) => ({
+        ...s,
+        thumbnailUrl: sceneSeeds[i] || s.thumbnailUrl,
+        locked: s.locked || false
+      }));
+
+      setBlueprint((prev) => (prev ? { ...prev, storyboard: updatedStoryboard } : null));
+    } catch (e) {
+      console.error("Seeds generation failed", e);
+    } finally {
+      setIsGeneratingSeeds(false);
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!vibe && !lyrics && !audioFile) {
+    const effectiveVibe = vibe || selectedStylePack.defaultVibe;
+    if (!effectiveVibe && !lyrics && !audioFile) {
       setError("Please provide at least a vibe, lyrics, or an audio file.");
       return;
     }
@@ -189,6 +221,10 @@ export default function App() {
     const content = `
 # MUSIC VIDEO BLUEPRINT: ${blueprint.title}
 **Mood**: ${blueprint.overallMood}
+**Style Pack**: ${selectedStylePack.name}
+**Camera Profile**: ${selectedStylePack.defaultCameraProfile}
+**Lighting Profile**: ${selectedStylePack.defaultLightingProfile}
+**Grade Profile**: ${selectedStylePack.defaultGradeProfile}
 **Colors**: ${blueprint.colorPalette.join(", ")}
 **Ratio**: ${blueprint.suggestedAspectRatio}
 
@@ -391,6 +427,17 @@ ${Array.from(new Set(blueprint.storyboard.map((scene) => scene.lightingEquipment
                     </span>
                   </div>
                 </div>
+              )}
+
+              <div className="flex gap-3 mt-8 flex-wrap">
+                {user ? (
+                  <button onClick={saveBlueprint} disabled={isSaving || !!blueprint.id} className={`px-6 py-3 rounded-full font-bold flex items-center gap-2 uppercase tracking-widest text-[10px] ${blueprint.id ? "bg-green-500/20 text-green-500" : "bg-white/10 text-white hover:bg-white/20"}`}>
+                    {isSaving ? "Saving..." : blueprint.id ? <><CheckCircle2 className="w-3 h-3" /> Saved</> : <><Save className="w-3 h-3" /> Save</>}
+                  </button>
+                ) : <button onClick={login} className="px-6 py-3 rounded-full bg-white/10 text-white/60 font-bold">Sign in to Save</button>}
+                <button onClick={downloadBlueprint} className="px-6 py-3 rounded-full bg-brand font-bold text-white flex items-center gap-2"><Download className="w-4 h-4" /> Export</button>
+                {blueprint.id && <button onClick={copyShareLink} className="px-6 py-3 rounded-full bg-white/10 text-white font-bold flex items-center gap-2"><FolderOpen className="w-4 h-4" /> Share</button>}
+                <button onClick={() => { setIsQuickCreateMode(false); setStep("input"); }} className="px-6 py-3 rounded-full bg-white/10 text-white font-bold">Advanced Edits</button>
               </div>
             </div>
 
