@@ -2,9 +2,9 @@ import { VideoBlueprint } from "../types";
 
 export async function generateMusicVideoBlueprint(
   vibe: string,
-  lyrics: string = "",
+  lyrics: string = '',
   durationSeconds: number = 180,
-  audioData?: { data: string; mimeType: string }
+  audioData?: AudioPayload
 ): Promise<VideoBlueprint> {
   const response = await fetch("/api/generate-blueprint", {
     method: "POST",

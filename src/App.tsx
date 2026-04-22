@@ -24,12 +24,13 @@ import {
   History,
   Save,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  Clapperboard
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMusicVideoBlueprint } from "./services/geminiService";
 import { generateVisualSeed } from "./services/imageService";
-import { VideoBlueprint, Scene } from "./types";
+import { VideoBlueprint, Scene, RenderJob } from "./types";
 import { auth, db } from "./firebase";
 import { 
   signInWithPopup, 
@@ -41,6 +42,7 @@ import {
 import { 
   collection, 
   addDoc, 
+  getDoc,
   getDocs, 
   query, 
   where, 
@@ -65,6 +67,8 @@ export default function App() {
   const [visualSeeds, setVisualSeeds] = useState<string[]>([]);
   const [isGeneratingSeeds, setIsGeneratingSeeds] = useState(false);
   const [viewMode, setViewMode] = useState<"storyboard" | "tech">("storyboard");
+  const [renderJob, setRenderJob] = useState<RenderJob | null>(null);
+  const [isRendering, setIsRendering] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -84,11 +88,16 @@ export default function App() {
   }, []);
 
   const loadSharedBlueprint = async (id: string) => {
+    if (!id || id.includes("/")) {
+      setStep("input");
+      return;
+    }
     setStep("loading");
     try {
-      const docSnap = await getDocs(query(collection(db, "blueprints"), where("__name__", "==", id)));
-      if (!docSnap.empty) {
-        const data = { id: docSnap.docs[0].id, ...docSnap.docs[0].data() } as VideoBlueprint;
+      const docRef = doc(db, "blueprints", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = { id: docSnap.id, ...docSnap.data() } as VideoBlueprint;
         setBlueprint(data);
         setVibe(data.vibe || "");
         setLyrics(data.lyrics || "");
@@ -126,8 +135,8 @@ export default function App() {
     }
   };
 
-  const saveBlueprint = async () => {
-    if (!user || !blueprint) return;
+  const saveBlueprint = async (): Promise<string | null> => {
+    if (!user || !blueprint) return null;
     setIsSaving(true);
     try {
       const docRef = await addDoc(collection(db, "blueprints"), {
@@ -139,10 +148,89 @@ export default function App() {
       });
       setBlueprint({ ...blueprint, id: docRef.id });
       loadMyBlueprints(user.uid);
+      return docRef.id;
     } catch (err) {
       console.error("Save failed", err);
+      return null;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const getRenderApiBaseUrl = () => {
+    const envUrl = (import.meta as ImportMeta & { env: { VITE_RENDER_API_URL?: string } }).env.VITE_RENDER_API_URL;
+    return envUrl || window.location.origin;
+  };
+
+  const fetchRenderStatus = async (renderId: string, authToken: string) => {
+    const response = await fetch(`${getRenderApiBaseUrl()}/api/renders/${renderId}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch render status.");
+    }
+    return response.json() as Promise<RenderJob>;
+  };
+
+  const handleRenderVideo = async () => {
+    if (!user || !blueprint || !audioFile) {
+      setError("Sign in, upload audio, and generate a blueprint before rendering.");
+      return;
+    }
+
+    setIsRendering(true);
+    setError(null);
+
+    try {
+      const blueprintId = blueprint.id || await saveBlueprint();
+      if (!blueprintId) {
+        throw new Error("Could not save blueprint before rendering.");
+      }
+
+      const authToken = await user.getIdToken();
+      const body = new FormData();
+      body.append("track", audioFile);
+      body.append("blueprintId", blueprintId);
+      body.append("blueprint", JSON.stringify(blueprint));
+
+      const queueResponse = await fetch(`${getRenderApiBaseUrl()}/api/renders`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+        body,
+      });
+
+      if (!queueResponse.ok) {
+        throw new Error("Could not queue render.");
+      }
+
+      const queued = await queueResponse.json() as { renderId: string };
+      setRenderJob({
+        id: queued.renderId,
+        blueprintId,
+        userId: user.uid,
+        status: "queued",
+        stage: "scene-plan",
+        progress: 0
+      });
+
+      const poll = window.setInterval(async () => {
+        try {
+          const status = await fetchRenderStatus(queued.renderId, authToken);
+          setRenderJob(status);
+          if (status.status === "failed" || status.status === "complete") {
+            window.clearInterval(poll);
+            setIsRendering(false);
+          }
+        } catch (pollError) {
+          console.error(pollError);
+          window.clearInterval(poll);
+          setIsRendering(false);
+        }
+      }, 4000);
+    } catch (err) {
+      console.error(err);
+      setError("Render failed to start. Please check your backend worker and try again.");
+      setIsRendering(false);
     }
   };
 
@@ -615,6 +703,13 @@ ${Array.from(new Set(blueprint.storyboard.map(s => s.lightingEquipment))).map(e 
                     >
                       <Download className="w-4 h-4" /> Export Video Spec
                     </button>
+                    <button 
+                      onClick={handleRenderVideo}
+                      disabled={isRendering || !user || !audioFile}
+                      className="px-6 py-3 rounded-full bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold flex items-center gap-2 hover:bg-white/20 transition-all uppercase tracking-widest text-[10px]"
+                    >
+                      <Clapperboard className="w-4 h-4" /> {isRendering ? "Rendering..." : "Render Video"}
+                    </button>
                     {blueprint.id && (
                       <button 
                         onClick={copyShareLink}
@@ -647,6 +742,31 @@ ${Array.from(new Set(blueprint.storyboard.map(s => s.lightingEquipment))).map(e 
                 </div>
               </div>
             </div>
+
+            {renderJob && (
+              <div className="glass p-6 rounded-[2rem] border-white/10">
+                <h3 className="meta-label mb-4 text-brand flex items-center gap-2">
+                  <Clapperboard className="w-3 h-3" /> Render Pipeline
+                </h3>
+                <p className="text-sm text-white/70 mb-2 uppercase tracking-widest">
+                  Status: <span className="text-brand">{renderJob.status}</span> · Stage: <span className="text-brand">{renderJob.stage}</span>
+                </p>
+                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full bg-brand transition-all duration-500" style={{ width: `${Math.max(0, Math.min(100, renderJob.progress || 0))}%` }} />
+                </div>
+                {renderJob.status === "failed" && (
+                  <p className="text-red-400 text-sm mt-3">{renderJob.errorMessage || "Render failed."}</p>
+                )}
+                {renderJob.status === "complete" && renderJob.downloadUrl && (
+                  <a
+                    className="inline-flex mt-4 px-4 py-2 rounded-full bg-brand text-white text-xs font-bold uppercase tracking-widest items-center gap-2 hover:brightness-110 transition-all"
+                    href={renderJob.downloadUrl}
+                  >
+                    <Download className="w-4 h-4" /> Download Final Video
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Inspiration Grid */}
             <div>

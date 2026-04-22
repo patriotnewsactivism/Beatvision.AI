@@ -46,3 +46,17 @@ export interface VideoBlueprint {
   lyrics?: string;
   createdAt?: string;
 }
+
+export type RenderStatus = "queued" | "processing" | "failed" | "complete";
+export type RenderStage = "scene-plan" | "asset-generation" | "timeline-assembly" | "final-encode";
+
+export interface RenderJob {
+  id: string;
+  userId: string;
+  blueprintId: string;
+  status: RenderStatus;
+  stage: RenderStage;
+  progress: number;
+  downloadUrl?: string;
+  errorMessage?: string;
+}
