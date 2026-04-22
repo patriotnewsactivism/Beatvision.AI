@@ -41,6 +41,7 @@ import {
 import { 
   collection, 
   addDoc, 
+  getDoc,
   getDocs, 
   query, 
   where, 
@@ -84,11 +85,16 @@ export default function App() {
   }, []);
 
   const loadSharedBlueprint = async (id: string) => {
+    if (!id || id.includes("/")) {
+      setStep("input");
+      return;
+    }
     setStep("loading");
     try {
-      const docSnap = await getDocs(query(collection(db, "blueprints"), where("__name__", "==", id)));
-      if (!docSnap.empty) {
-        const data = { id: docSnap.docs[0].id, ...docSnap.docs[0].data() } as VideoBlueprint;
+      const docRef = doc(db, "blueprints", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = { id: docSnap.id, ...docSnap.data() } as VideoBlueprint;
         setBlueprint(data);
         setVibe(data.vibe || "");
         setLyrics(data.lyrics || "");
