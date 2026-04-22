@@ -243,10 +243,16 @@ export default function App() {
       return parts[0];
     };
 
-    const currentScene = blueprint.storyboard.reduce((acc, scene, idx) => {
-      if (currentTime >= parseTimestamp(scene.timestamp)) return idx;
-      return acc;
-    }, -1);
+    const sectionIndex = blueprint.analysis?.sections.findIndex(
+      (section) => currentTime >= section.start && currentTime < section.end
+    );
+
+    const currentScene = sectionIndex !== undefined && sectionIndex >= 0
+      ? Math.min(sectionIndex, blueprint.storyboard.length - 1)
+      : blueprint.storyboard.reduce((acc, scene, idx) => {
+          if (currentTime >= parseTimestamp(scene.timestamp)) return idx;
+          return acc;
+        }, -1);
 
     setActiveSceneIndex(currentScene);
   }, [currentTime, blueprint, audioFile]);

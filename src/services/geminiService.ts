@@ -1,20 +1,4 @@
-import { VideoBlueprint } from '../types';
-import { auth } from '../firebase';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-interface AudioPayload {
-  data: string;
-  mimeType: string;
-}
-
-interface BlueprintPayload {
-  vibe: string;
-  lyrics: string;
-  durationSeconds: number;
-  sceneLimit?: number;
-  audioData?: AudioPayload;
-}
+import { VideoBlueprint } from "../types";
 
 export async function generateMusicVideoBlueprint(
   vibe: string,
@@ -22,27 +6,23 @@ export async function generateMusicVideoBlueprint(
   durationSeconds: number = 180,
   audioData?: AudioPayload
 ): Promise<VideoBlueprint> {
-  const payload: BlueprintPayload = {
-    vibe,
-    lyrics,
-    durationSeconds,
-    sceneLimit: 10,
-    audioData,
-  };
-
-  const response = await fetch(`${API_BASE_URL}/api/generateBlueprint`, {
-    method: 'POST',
+  const response = await fetch("/api/generate-blueprint", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      ...(auth.currentUser?.uid ? { 'x-user-id': auth.currentUser.uid } : {}),
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      vibe,
+      lyrics,
+      durationSeconds,
+      audioData,
+    }),
   });
 
-  const data = await response.json();
   if (!response.ok) {
-    throw new Error(data?.error || 'Failed to generate music video blueprint');
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error || "Failed to generate music video blueprint");
   }
 
-  return data as VideoBlueprint;
+  return response.json() as Promise<VideoBlueprint>;
 }
